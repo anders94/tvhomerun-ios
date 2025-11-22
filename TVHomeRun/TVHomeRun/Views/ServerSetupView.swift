@@ -22,85 +22,62 @@ struct ServerSetupView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.6)]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            ScrollView {
-                VStack(spacing: 30) {
-                    // Logo and title
+        NavigationView {
+            Form {
+                Section {
                     VStack(spacing: 15) {
                         Image(systemName: "play.tv.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.white)
+                            .font(.system(size: 60))
+                            .foregroundColor(.blue)
 
                         Text("TV HomeRun")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundColor(.white)
+                            .font(.title)
+                            .fontWeight(.bold)
 
                         Text("Stream your recorded content")
-                            .font(.system(size: 18))
-                            .foregroundColor(.white.opacity(0.9))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
-                    .padding(.top, 40)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                }
 
-                    // URL Input Card
-                    VStack(spacing: 20) {
-                        Text("Enter Server URL")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.white)
+                Section {
+                    TextField("Server URL", text: $urlInput)
+                        .keyboardType(.URL)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                        .textInputAutocapitalization(.never)
+                } header: {
+                    Text("Server Configuration")
+                } footer: {
+                    if let error = validationError {
+                        Text(error)
+                            .foregroundColor(.red)
+                    } else {
+                        Text("Enter the URL of your TV HomeRun server (e.g., http://192.168.1.100:3000)")
+                    }
+                }
 
-                        TextField("http://192.168.1.100:3000", text: $urlInput)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 16))
-                            .padding()
-                            .background(Color.white.opacity(0.9))
-                            .cornerRadius(10)
-                            .keyboardType(.URL)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-
-                        if let error = validationError {
-                            Text(error)
-                                .font(.system(size: 14))
-                                .foregroundColor(.red)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
-
-                        // Accept button
-                        Button(action: validateAndConnect) {
-                            HStack {
-                                if isValidating {
-                                    ProgressView()
-                                        .progressViewStyle(.circular)
-                                        .tint(.white)
-                                } else {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 18))
-                                }
-                                Text(isValidating ? "Connecting..." : "Accept")
-                                    .font(.system(size: 18, weight: .semibold))
+                Section {
+                    Button(action: validateAndConnect) {
+                        HStack {
+                            if isValidating {
+                                ProgressView()
+                                Text("Connecting...")
+                            } else {
+                                Text("Connect to Server")
                             }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
                         }
-                        .disabled(isValidating || urlInput.isEmpty)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 30)
-
-                    Spacer()
+                    .disabled(isValidating || urlInput.isEmpty)
                 }
             }
+            .navigationTitle("Setup")
+            .navigationBarTitleDisplayMode(.inline)
         }
+        .navigationViewStyle(.stack)
     }
 
     private func validateAndConnect() {

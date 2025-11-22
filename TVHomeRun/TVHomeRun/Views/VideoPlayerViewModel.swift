@@ -7,6 +7,7 @@
 
 import Foundation
 import AVKit
+import AVFoundation
 import Combine
 
 @MainActor
@@ -61,8 +62,21 @@ class VideoPlayerViewModel: ObservableObject {
         }
         hasSetup = true
         print("Setting up player for the first time")
+        configureAudioSession()
         setupPlayer(with: currentEpisode)
         setupControlsTimer()
+    }
+
+    private func configureAudioSession() {
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .moviePlayback)
+            try audioSession.setActive(true)
+            print("Audio session configured successfully")
+        } catch {
+            print("Failed to configure audio session: \(error.localizedDescription)")
+            errorMessage = "Audio configuration failed: \(error.localizedDescription)"
+        }
     }
 
     private func setupPlayer(with episode: Episode) {
@@ -341,5 +355,13 @@ class VideoPlayerViewModel: ObservableObject {
         player.pause()
         cleanup()
         controlsTimer?.invalidate()
+
+        // Deactivate audio session
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            print("Audio session deactivated")
+        } catch {
+            print("Failed to deactivate audio session: \(error.localizedDescription)")
+        }
     }
 }
