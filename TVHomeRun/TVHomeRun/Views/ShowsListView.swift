@@ -53,7 +53,7 @@ struct ShowsListView: View {
                 }
             }
         }
-        .navigationTitle("TV HomeRun")
+        .navigationTitle("TVHomeRun")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
