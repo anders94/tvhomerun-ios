@@ -1,6 +1,6 @@
 # TV HomeRun for iOS
 
-A SwiftUI-based streaming client for iOS that connects to a server running [tvhomerun-web](https://github.com/anders94/tvhomerun-web), enabling you to browse and watch video content on iPhone and iPad.
+A SwiftUI-based streaming client for iOS that connects to a server running [tvhomerun-backend](https://github.com/anders94/tvhomerun-backend), enabling you to browse and watch video content on iPhone and iPad.
 
 ## Features
 
@@ -16,13 +16,14 @@ A SwiftUI-based streaming client for iOS that connects to a server running [tvho
 - iOS 15.0+
 - Xcode 14.0+
 - Swift 5.7+
-- A server running [tvhomerun-web](https://github.com/anders94/tvhomerun-web)
+- A server running [tvhomerun-backend](https://github.com/anders94/tvhomerun-backend)
 
 ## Installation
 
-1. Double-click the `.xcodeproj` file to open in Xcode
-2. Select your target device or simulator
-3. Press ⌘+R to build and run
+1. Clone the repository: `git clone https://github.com/anders94/tvhomerun-ios.git
+2. Double-click the `.xcodeproj` file to open in Xcode
+3. Select your target device or simulator
+4. Press ⌘+R to build and run
 
 ## Project Structure
 
@@ -139,7 +140,7 @@ xcodebuild -scheme TVHomeRun -destination 'platform=iOS Simulator,name=iPhone 15
 
 ## Testing
 
-For testing, you'll need a server running locally at a specified port (default: 3000) that implements the API endpoints. See [tvhomerun-web](https://github.com/anders94/tvhomerun-web) for the server implementation.
+For testing, you'll need a server running locally at a specified port (default: 3000) that implements the API endpoints. See [tvhomerun-backend](https://github.com/anders94/tvhomerun-backend) for the server implementation.
 
 ## Troubleshooting
 
@@ -164,8 +165,8 @@ For testing, you'll need a server running locally at a specified port (default: 
 
 ## Related Projects
 
-- [tvhomerun-web](https://github.com/anders94/tvhomerun-web) - Server implementation
-- [tvhomerun-appletv](https://github.com/anders94/tvhomerun-appletv) - Apple TV version
+- [tvhomerun-backend](https://github.com/anders94/tvhomerun-backend) - Server implementation
+- [tvhomerun-tvos](https://github.com/anders94/tvhomerun-tvos) - Apple TV version
 
 ## License
 
