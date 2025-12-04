@@ -102,6 +102,15 @@ class APIClient: ObservableObject {
         )
     }
 
+    func deleteEpisode(episodeId: Int, rerecord: Bool = false) async throws {
+        let rerecordParam = rerecord ? "?rerecord=true" : ""
+        _ = try await performRequest(
+            endpoint: "/api/episodes/\(episodeId)\(rerecordParam)",
+            method: "DELETE",
+            responseType: EmptyResponse.self
+        )
+    }
+
     // MARK: - Generic Request Handler with Exponential Backoff
 
     private func performRequest<T: Decodable>(
@@ -139,6 +148,13 @@ class APIClient: ObservableObject {
 
             let decoder = JSONDecoder()
             do {
+                // Handle empty responses for DELETE and other requests that may not return data
+                if data.isEmpty || (data.count == 2 && data == Data("{}".utf8)) {
+                    // Return empty response if T is EmptyResponse
+                    if T.self == EmptyResponse.self {
+                        return EmptyResponse() as! T
+                    }
+                }
                 let decodedResponse = try decoder.decode(T.self, from: data)
                 return decodedResponse
             } catch {

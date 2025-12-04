@@ -13,6 +13,9 @@ struct EpisodesListView: View {
     @State private var episodes: [Episode] = []
     @State private var isLoading = true
     @State private var selectedEpisode: Episode?
+    @State private var episodeToDelete: Episode?
+    @State private var showDeleteConfirmation = false
+    @State private var isDeleting = false
 
     var body: some View {
         ZStack {
@@ -33,19 +36,35 @@ struct EpisodesListView: View {
                         .foregroundColor(.gray)
                 }
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(episodes) { episode in
-                            Button(action: {
+                List {
+                    ForEach(episodes) { episode in
+                        EpisodeRowView(episode: episode)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
                                 selectedEpisode = episode
-                            }) {
-                                EpisodeRowView(episode: episode)
                             }
-                            .buttonStyle(.plain)
-                        }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    episodeToDelete = episode
+                                    showDeleteConfirmation = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    episodeToDelete = episode
+                                    showDeleteConfirmation = true
+                                } label: {
+                                    Label("Delete Episode", systemImage: "trash")
+                                }
+                            }
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                     }
-                    .padding()
                 }
+                .listStyle(.plain)
             }
         }
         .navigationTitle(show.title)
@@ -66,6 +85,22 @@ struct EpisodesListView: View {
             if let error = apiClient.error {
                 Text(error.localizedDescription)
             }
+        }
+        .alert(
+            "Delete Episode",
+            isPresented: $showDeleteConfirmation,
+            presenting: episodeToDelete
+        ) { episode in
+            Button("Delete", role: .destructive) {
+                Task {
+                    await deleteEpisode(episode)
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                episodeToDelete = nil
+            }
+        } message: { episode in
+            Text("Are you sure you want to delete \"\(episode.episodeTitle)\"?")
         }
         .task {
             await loadEpisodes()
@@ -115,6 +150,28 @@ struct EpisodesListView: View {
         } catch {
             // Silently fail - not critical if refresh fails
             print("Failed to refresh episodes: \(error)")
+        }
+    }
+
+    private func deleteEpisode(_ episode: Episode) async {
+        isDeleting = true
+        do {
+            // Hard-coded to prevent re-recording (rerecord: false)
+            try await apiClient.deleteEpisode(episodeId: episode.id, rerecord: false)
+            await MainActor.run {
+                // Remove the episode from the local list with animation
+                withAnimation {
+                    episodes.removeAll { $0.id == episode.id }
+                }
+                episodeToDelete = nil
+                isDeleting = false
+            }
+        } catch {
+            await MainActor.run {
+                episodeToDelete = nil
+                isDeleting = false
+            }
+            // Error is already handled by APIClient's error alert
         }
     }
 }
