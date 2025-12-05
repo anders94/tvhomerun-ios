@@ -37,11 +37,10 @@ enum APIError: Error, LocalizedError {
 // Empty response for requests that don't return data
 struct EmptyResponse: Codable {}
 
-@MainActor
 class APIClient: ObservableObject {
-    @Published var isLoading = false
-    @Published var error: APIError?
-    @Published var showErrorAlert = false
+    @MainActor @Published var isLoading = false
+    @MainActor @Published var error: APIError?
+    @MainActor @Published var showErrorAlert = false
 
     private var baseURL: String
     private let session: URLSession
@@ -57,6 +56,7 @@ class APIClient: ObservableObject {
         self.session = URLSession(configuration: config)
     }
 
+    @MainActor
     func updateBaseURL(_ url: String) {
         self.baseURL = url
     }
@@ -224,6 +224,7 @@ class APIClient: ObservableObject {
         )
     }
 
+    @MainActor
     func clearError() {
         error = nil
         showErrorAlert = false

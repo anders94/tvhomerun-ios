@@ -31,8 +31,8 @@ struct Episode: Codable, Identifiable, Equatable {
     let title: String
     let episodeTitle: String
     let episodeNumber: String
-    let seasonNumber: Int
-    let episodeNum: Int
+    let seasonNumber: Int?
+    let episodeNum: Int?
     let synopsis: String
     let category: String
     let channelName: String
