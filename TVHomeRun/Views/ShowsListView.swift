@@ -14,6 +14,7 @@ struct ShowsListView: View {
     @State private var isLoading = true
     @State private var selectedShow: Show?
     @State private var showServerSettings = false
+    @State private var showGuide = false
 
     var body: some View {
         ZStack {
@@ -56,6 +57,13 @@ struct ShowsListView: View {
         .navigationTitle("TVHomeRun")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    showGuide = true
+                }) {
+                    Image(systemName: "magnifyingglass")
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
                     showServerSettings = true
@@ -71,6 +79,9 @@ struct ShowsListView: View {
             ServerSetupView(userSettings: userSettings, onSettingsSaved: {
                 showServerSettings = false
             })
+        }
+        .sheet(isPresented: $showGuide) {
+            GuideView(apiClient: apiClient)
         }
         .alert("Connection Error", isPresented: $apiClient.showErrorAlert) {
             Button("OK") {

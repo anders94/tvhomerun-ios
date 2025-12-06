@@ -51,7 +51,7 @@ class APIClient: ObservableObject {
     init(baseURL: String) {
         self.baseURL = baseURL
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForRequest = 60  // Increased for guide endpoint
         config.timeoutIntervalForResource = 300
         self.session = URLSession(configuration: config)
     }
@@ -108,6 +108,16 @@ class APIClient: ObservableObject {
             endpoint: "/api/episodes/\(episodeId)\(rerecordParam)",
             method: "DELETE",
             responseType: EmptyResponse.self
+        )
+    }
+
+    // MARK: - Guide
+
+    func fetchGuide(forceRefresh: Bool = false) async throws -> GuideResponse {
+        let refreshParam = forceRefresh ? "?forceRefresh=true" : ""
+        return try await performRequest(
+            endpoint: "/api/guide\(refreshParam)",
+            responseType: GuideResponse.self
         )
     }
 
