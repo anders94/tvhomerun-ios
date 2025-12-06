@@ -29,7 +29,9 @@ struct GuideChannel: Codable, Identifiable {
 }
 
 struct GuideProgram: Codable, Identifiable {
-    var id: String { seriesId + String(startTime) }
+    var id: String {
+        seriesId + String(startTime) + String(endTime) + (channelId ?? "") + (episodeTitle ?? "") + (episodeNumber ?? "")
+    }
     let seriesId: String
     let title: String
     let episodeNumber: String?
@@ -39,6 +41,7 @@ struct GuideProgram: Codable, Identifiable {
     let synopsis: String?
     let imageUrl: String?
     let filter: [String]?
+    var channelId: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case seriesId = "SeriesID"

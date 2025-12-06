@@ -13,6 +13,7 @@ struct GuideView: View {
     @State private var filteredSeries: [GuideSeries] = []
     @State private var isLoading = true
     @State private var searchText = ""
+    @State private var recordedSeriesIds: Set<String> = []
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -38,7 +39,10 @@ struct GuideView: View {
                     List {
                         ForEach(filteredSeries) { series in
                             NavigationLink(value: series) {
-                                GuideSeriesRow(series: series)
+                                GuideSeriesRow(
+                                    series: series,
+                                    isRecording: recordedSeriesIds.contains(series.id)
+                                )
                             }
                         }
                     }
@@ -52,23 +56,20 @@ struct GuideView: View {
                 filterSeries(query: newValue)
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
-                        dismiss()
-                    }
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        Task {
-                            await loadGuide(forceRefresh: true)
-                        }
+                        dismiss()
                     } label: {
-                        Image(systemName: "arrow.clockwise")
+                        Image(systemName: "xmark")
                     }
                 }
             }
             .navigationDestination(for: GuideSeries.self) { series in
-                GuideDetailView(series: series, apiClient: apiClient)
+                GuideDetailView(
+                    series: series,
+                    apiClient: apiClient,
+                    isRecording: recordedSeriesIds.contains(series.id)
+                )
             }
             .task {
                 await loadGuide()
@@ -79,18 +80,30 @@ struct GuideView: View {
     private func loadGuide(forceRefresh: Bool = false) async {
         isLoading = true
         do {
-            let response = try await apiClient.fetchGuide(forceRefresh: forceRefresh)
+            // Load guide and recording rules in parallel
+            async let guideResponse = apiClient.fetchGuide(forceRefresh: forceRefresh)
+            async let recordingRulesResponse = apiClient.fetchRecordingRules()
+
+            let (guide, rules) = try await (guideResponse, recordingRulesResponse)
+
             await MainActor.run {
+                // Store recorded series IDs
+                recordedSeriesIds = Set(rules.rules.map { $0.seriesId })
+
                 // Group programs by series
                 var seriesDict: [String: GuideSeries] = [:]
-                for channel in response.channels {
+                for channel in guide.channels {
                     for program in channel.guide {
+                        // Create a new program instance with channel ID
+                        var programWithChannel = program
+                        programWithChannel.channelId = channel.guideNumber
+
                         if var existingSeries = seriesDict[program.seriesId] {
                             existingSeries = GuideSeries(
                                 id: existingSeries.id,
                                 title: existingSeries.title,
                                 imageUrl: existingSeries.imageUrl,
-                                programs: existingSeries.programs + [program]
+                                programs: existingSeries.programs + [programWithChannel]
                             )
                             seriesDict[program.seriesId] = existingSeries
                         } else {
@@ -98,7 +111,7 @@ struct GuideView: View {
                                 id: program.seriesId,
                                 title: program.title,
                                 imageUrl: program.imageUrl,
-                                programs: [program]
+                                programs: [programWithChannel]
                             )
                         }
                     }
@@ -128,38 +141,54 @@ struct GuideView: View {
 
 struct GuideSeriesRow: View {
     let series: GuideSeries
+    let isRecording: Bool
 
     var body: some View {
         HStack(spacing: 15) {
-            // Series image
-            AsyncImage(url: URL(string: series.imageUrl ?? "")) { phase in
-                switch phase {
-                case .empty:
-                    ZStack {
-                        Color.gray.opacity(0.3)
-                        ProgressView()
-                    }
-                    .frame(width: 80, height: 120)
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+            // Series image with recording indicator
+            ZStack(alignment: .topTrailing) {
+                AsyncImage(url: URL(string: series.imageUrl ?? "")) { phase in
+                    switch phase {
+                    case .empty:
+                        ZStack {
+                            Color.gray.opacity(0.3)
+                            ProgressView()
+                        }
                         .frame(width: 80, height: 120)
-                        .clipped()
-                case .failure:
-                    ZStack {
-                        Color.gray.opacity(0.3)
-                        Image(systemName: "tv")
-                            .font(.system(size: 30))
-                            .foregroundColor(.gray)
-                    }
-                    .frame(width: 80, height: 120)
-                @unknown default:
-                    Color.gray.opacity(0.3)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 80, height: 120)
+                            .clipped()
+                    case .failure:
+                        ZStack {
+                            Color.gray.opacity(0.3)
+                            Image(systemName: "tv")
+                                .font(.system(size: 30))
+                                .foregroundColor(.gray)
+                        }
                         .frame(width: 80, height: 120)
+                    @unknown default:
+                        Color.gray.opacity(0.3)
+                            .frame(width: 80, height: 120)
+                    }
+                }
+                .frame(width: 80, height: 120)
+                .cornerRadius(8)
+
+                // Red recording indicator dot
+                if isRecording {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 12, height: 12)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white, lineWidth: 2)
+                        )
+                        .offset(x: 4, y: -4)
                 }
             }
-            .cornerRadius(8)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(series.title)

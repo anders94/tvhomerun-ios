@@ -121,6 +121,40 @@ class APIClient: ObservableObject {
         )
     }
 
+    // MARK: - Recording Rules
+
+    func fetchRecordingRules() async throws -> RecordingRulesResponse {
+        return try await performRequest(
+            endpoint: "/api/recording-rules",
+            responseType: RecordingRulesResponse.self
+        )
+    }
+
+    func createRecordingRule(seriesId: String) async throws -> RecordingRuleResponse {
+        let request = CreateRecordingRuleRequest(
+            seriesId: seriesId,
+            channelOnly: nil,
+            teamOnly: nil,
+            recentOnly: nil,
+            startPadding: nil,
+            endPadding: nil
+        )
+        return try await performRequest(
+            endpoint: "/api/recording-rules",
+            method: "POST",
+            body: request,
+            responseType: RecordingRuleResponse.self
+        )
+    }
+
+    func deleteRecordingRule(ruleId: String) async throws {
+        _ = try await performRequest(
+            endpoint: "/api/recording-rules/\(ruleId)",
+            method: "DELETE",
+            responseType: EmptyResponse.self
+        )
+    }
+
     // MARK: - Generic Request Handler with Exponential Backoff
 
     private func performRequest<T: Decodable>(

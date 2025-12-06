@@ -10,7 +10,11 @@ import SwiftUI
 struct GuideDetailView: View {
     let series: GuideSeries
     @ObservedObject var apiClient: APIClient
+    let isRecording: Bool
     @State private var isRecordingEnabled = false
+    @State private var currentRecordingRule: RecordingRule?
+    @State private var isLoadingRules = true
+    @State private var isUpdating = false
 
     var body: some View {
         List {
@@ -41,17 +45,67 @@ struct GuideDetailView: View {
         }
         .navigationTitle(series.title)
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: isRecordingEnabled) { _, newValue in
-            Task {
-                await toggleRecording(enabled: newValue)
+        .task {
+            // Set initial state immediately based on passed parameter
+            isRecordingEnabled = isRecording
+            isLoadingRules = false
+            // Load recording rule in background to get the rule ID
+            await loadRecordingStatus()
+        }
+        .onChange(of: isRecordingEnabled) { oldValue, newValue in
+            // Only act on user changes, not initial load
+            if !isLoadingRules && oldValue != newValue {
+                Task {
+                    await toggleRecording(enabled: newValue)
+                }
             }
+        }
+        .disabled(isUpdating)
+    }
+
+    private func loadRecordingStatus() async {
+        do {
+            let response = try await apiClient.fetchRecordingRules()
+            await MainActor.run {
+                // Store the recording rule (we need the ID for deletion)
+                currentRecordingRule = response.rules.first { $0.seriesId == series.id }
+            }
+        } catch {
+            // Silently fail - user can still toggle to create rule
         }
     }
 
     private func toggleRecording(enabled: Bool) async {
-        // TODO: Implement recording rule API calls when backend documentation is available
-        // For now, this is a placeholder that acknowledges the user's action
-        print("Recording \(enabled ? "enabled" : "disabled") for series: \(series.title)")
+        isUpdating = true
+        do {
+            if enabled {
+                // Create new recording rule
+                let response = try await apiClient.createRecordingRule(seriesId: series.id)
+                await MainActor.run {
+                    if let rule = response.recordingRule {
+                        currentRecordingRule = rule
+                    }
+                    isUpdating = false
+                }
+            } else {
+                // Delete existing recording rule
+                if let ruleId = currentRecordingRule?.id {
+                    try await apiClient.deleteRecordingRule(ruleId: ruleId)
+                    await MainActor.run {
+                        currentRecordingRule = nil
+                        isUpdating = false
+                    }
+                }
+            }
+        } catch {
+            await MainActor.run {
+                // Revert toggle on error
+                isRecordingEnabled = !enabled
+                currentRecordingRule = enabled ? nil : currentRecordingRule
+                isUpdating = false
+            }
+            // Error is already handled by APIClient's error alert
+        }
     }
 }
 
