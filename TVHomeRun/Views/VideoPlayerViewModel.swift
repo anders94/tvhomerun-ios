@@ -10,18 +10,17 @@ import AVKit
 import AVFoundation
 import Combine
 
-@MainActor
 class VideoPlayerViewModel: ObservableObject {
-    @Published var player: AVPlayer = AVPlayer()
-    @Published var isPlaying = false
-    @Published var isLoading = true
-    @Published var showControls = true
-    @Published var progress: Double = 0
-    @Published var currentTimeString = "0:00"
-    @Published var durationString = "0:00"
-    @Published var errorMessage: String?
+    @MainActor @Published var player: AVPlayer = AVPlayer()
+    @MainActor @Published var isPlaying = false
+    @MainActor @Published var isLoading = true
+    @MainActor @Published var showControls = true
+    @MainActor @Published var progress: Double = 0
+    @MainActor @Published var currentTimeString = "0:00"
+    @MainActor @Published var durationString = "0:00"
+    @MainActor @Published var errorMessage: String?
 
-    @Published var currentEpisode: Episode
+    @MainActor @Published var currentEpisode: Episode
     private let allEpisodes: [Episode]
     private let apiClient: APIClient
 
@@ -55,6 +54,7 @@ class VideoPlayerViewModel: ObservableObject {
         print("VideoPlayerViewModel init with episode: \(episode.episodeNumber)")
     }
 
+    @MainActor
     func setup() {
         guard !hasSetup else {
             print("Setup already called, skipping")
@@ -67,6 +67,7 @@ class VideoPlayerViewModel: ObservableObject {
         setupControlsTimer()
     }
 
+    @MainActor
     private func configureAudioSession() {
         do {
             let audioSession = AVAudioSession.sharedInstance()
@@ -79,6 +80,7 @@ class VideoPlayerViewModel: ObservableObject {
         }
     }
 
+    @MainActor
     private func setupPlayer(with episode: Episode) {
         print("setupPlayer called for: \(episode.episodeNumber)")
         isLoading = true
@@ -182,6 +184,7 @@ class VideoPlayerViewModel: ObservableObject {
             }
     }
 
+    @MainActor
     private func updateProgress() {
         let currentTime = player.currentTime().seconds
         let duration = player.currentItem?.duration.seconds ?? 0
@@ -252,6 +255,7 @@ class VideoPlayerViewModel: ObservableObject {
         }
     }
 
+    @MainActor
     func togglePlayPause() {
         if isPlaying {
             player.pause()
@@ -262,6 +266,7 @@ class VideoPlayerViewModel: ObservableObject {
         resetControlsTimer()
     }
 
+    @MainActor
     func skipForward() {
         let currentTime = player.currentTime()
         let newTime = CMTimeAdd(currentTime, CMTime(seconds: 30, preferredTimescale: 1))
@@ -269,6 +274,7 @@ class VideoPlayerViewModel: ObservableObject {
         resetControlsTimer()
     }
 
+    @MainActor
     func skipBackward() {
         let currentTime = player.currentTime()
         let newTime = CMTimeSubtract(currentTime, CMTime(seconds: 15, preferredTimescale: 1))
@@ -276,6 +282,7 @@ class VideoPlayerViewModel: ObservableObject {
         resetControlsTimer()
     }
 
+    @MainActor
     func playNextEpisode() {
         guard let currentIndex = allEpisodes.firstIndex(where: { $0.id == currentEpisode.id }),
               currentIndex < allEpisodes.count - 1 else {
@@ -288,6 +295,7 @@ class VideoPlayerViewModel: ObservableObject {
         resetControlsTimer()
     }
 
+    @MainActor
     func playPreviousEpisode() {
         guard let currentIndex = allEpisodes.firstIndex(where: { $0.id == currentEpisode.id }),
               currentIndex > 0 else {
@@ -300,6 +308,7 @@ class VideoPlayerViewModel: ObservableObject {
         resetControlsTimer()
     }
 
+    @MainActor
     func toggleControls() {
         showControls.toggle()
         if showControls {
@@ -309,10 +318,12 @@ class VideoPlayerViewModel: ObservableObject {
         }
     }
 
+    @MainActor
     private func setupControlsTimer() {
         resetControlsTimer()
     }
 
+    @MainActor
     private func resetControlsTimer() {
         controlsTimer?.invalidate()
         controlsTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] timer in
@@ -328,6 +339,7 @@ class VideoPlayerViewModel: ObservableObject {
         }
     }
 
+    @MainActor
     private func cleanup() {
         print("Cleaning up observers")
         if let timeObserver = timeObserver {
@@ -344,6 +356,7 @@ class VideoPlayerViewModel: ObservableObject {
         endObserver = nil
     }
 
+    @MainActor
     func close() {
         print("Closing player")
 

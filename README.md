@@ -6,7 +6,9 @@ A SwiftUI-based streaming client for iOS that connects to a server running [tvho
 
 - **Server Configuration**: Persistent URL storage with validation
 - **Content Browsing**: Grid-based show display with thumbnails and metadata
-- **Episode Management**: Lists episodes with progress tracking and watch indicators
+- **Program Guide**: Searchable guide showing upcoming TV programs with recording indicators
+- **Recording Management**: Toggle recording schedules for entire series with visual indicators
+- **Episode Management**: Lists episodes with progress tracking, watch indicators, and swipe-to-delete
 - **Advanced Playback**: Video player supporting resume functionality, seek controls, and auto-play for subsequent episodes
 - **Error Resilience**: Exponential backoff retry logic (1s, 2s, 4s intervals) with user notifications after 5 seconds
 - **Touch-Optimized UI**: iOS-specific interface design optimized for iPhone and iPad
@@ -36,7 +38,9 @@ TVHomeRun/
 │   ├── Models/
 │   │   ├── Health.swift            # Health check data model
 │   │   ├── Episode.swift           # Episode data model
-│   │   └── Show.swift              # Show data model
+│   │   ├── Show.swift              # Show data model
+│   │   ├── Guide.swift             # Program guide data models
+│   │   └── RecordingRule.swift     # Recording rule data models
 │   ├── Services/
 │   │   └── APIClient.swift         # API client with error handling
 │   ├── Utilities/
@@ -45,9 +49,12 @@ TVHomeRun/
 │       ├── ServerSetupView.swift   # Server URL configuration
 │       ├── ShowsListView.swift     # Shows grid view
 │       ├── EpisodesListView.swift  # Episodes list view
+│       ├── GuideView.swift         # Program guide view
+│       ├── GuideDetailView.swift   # Program guide detail view
 │       ├── VideoPlayerView.swift   # Video player view
 │       └── VideoPlayerViewModel.swift # Player state management
-└── README.md
+├── CHANGELOG.md                     # Development history
+└── README.md                        # This file
 ```
 
 ## Architecture
@@ -58,6 +65,8 @@ The app follows the MVVM (Model-View-ViewModel) architecture pattern:
 - **Show**: Represents a TV show with metadata
 - **Episode**: Represents an episode with playback tracking
 - **Health**: Server health status
+- **Guide**: Program guide data (GuideResponse, GuideChannel, GuideProgram, GuideSeries)
+- **RecordingRule**: Recording rules for series with configuration options
 
 ### Services Layer
 - **APIClient**: Handles all network requests with exponential backoff retry logic
@@ -67,8 +76,10 @@ The app follows the MVVM (Model-View-ViewModel) architecture pattern:
 
 ### Views Layer
 - **ServerSetupView**: Server URL configuration with validation
-- **ShowsListView**: Grid display of available shows
-- **EpisodesListView**: List of episodes for a selected show
+- **ShowsListView**: Grid display of available shows with guide access
+- **EpisodesListView**: List of episodes for a selected show with swipe-to-delete
+- **GuideView**: Searchable program guide with recording indicators
+- **GuideDetailView**: Detailed view of upcoming episodes with recording toggle
 - **VideoPlayerView**: Full-screen video player with native iOS controls
 - **VideoPlayerViewModel**: Manages playback state, progress tracking, and episode navigation
 
@@ -77,12 +88,17 @@ The app follows the MVVM (Model-View-ViewModel) architecture pattern:
 
 ## API Integration
 
-The app communicates with three primary endpoints:
+The app communicates with the following endpoints:
 
 - `GET /health` - Server connectivity verification
 - `GET /api/shows` - Retrieve available shows
 - `GET /api/shows/:id/episodes` - Retrieve episodes for a show
 - `PUT /api/episodes/:id/progress` - Update playback progress
+- `DELETE /api/episodes/:id` - Delete episode (optional rerecord parameter)
+- `GET /api/guide` - Retrieve program guide (optional forceRefresh parameter)
+- `GET /api/recording-rules` - Retrieve all recording rules
+- `POST /api/recording-rules` - Create new recording rule
+- `DELETE /api/recording-rules/:id` - Delete recording rule
 
 ## Configuration
 
@@ -118,6 +134,10 @@ This iOS version is adapted from the tvOS version with the following changes:
 4. **Watch Episode**: Tap an episode to start playback
 5. **Resume**: Episodes automatically resume from where you left off
 6. **Auto-Play**: Next episode plays automatically when current episode ends
+7. **Delete Episode**: Swipe left on an episode and tap Delete (or long-press for menu)
+8. **Program Guide**: Tap the magnifying glass icon to browse upcoming programs
+9. **Schedule Recordings**: In the guide, tap a show and toggle "Record This Series"
+10. **Search Guide**: Use the search bar to find specific shows in the guide
 
 ## Development
 
