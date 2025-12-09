@@ -13,7 +13,6 @@ struct LiveChannelsView: View {
     @State private var currentPrograms: [String: CurrentProgram] = [:]
     @State private var isLoading = true
     @State private var selectedChannel: Channel?
-    @State private var showPlayer = false
 
     var body: some View {
         ZStack {
@@ -37,7 +36,6 @@ struct LiveChannelsView: View {
                 List(channels) { channel in
                     Button {
                         selectedChannel = channel
-                        showPlayer = true
                     } label: {
                         ChannelRow(
                             channel: channel,
@@ -55,13 +53,11 @@ struct LiveChannelsView: View {
         .refreshable {
             await loadChannels()
         }
-        .fullScreenCover(isPresented: $showPlayer) {
-            if let channel = selectedChannel {
-                LiveVideoPlayerView(
-                    channel: channel,
-                    apiClient: apiClient
-                )
-            }
+        .fullScreenCover(item: $selectedChannel) { channel in
+            LiveVideoPlayerView(
+                channel: channel,
+                apiClient: apiClient
+            )
         }
     }
 
