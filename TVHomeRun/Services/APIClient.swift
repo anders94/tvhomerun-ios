@@ -42,7 +42,7 @@ class APIClient: ObservableObject {
     @MainActor @Published var error: APIError?
     @MainActor @Published var showErrorAlert = false
 
-    private var baseURL: String
+    var baseURL: String
     private let session: URLSession
     private let maxRetries = 3
     private let initialBackoff: TimeInterval = 1.0
@@ -155,6 +155,67 @@ class APIClient: ObservableObject {
         )
     }
 
+    // MARK: - Live TV
+
+    func fetchLiveChannels() async throws -> ChannelsResponse {
+        return try await performRequest(
+            endpoint: "/api/live/channels",
+            responseType: ChannelsResponse.self
+        )
+    }
+
+    func fetchCurrentPrograms() async throws -> CurrentProgramsResponse {
+        return try await performRequest(
+            endpoint: "/api/guide/now",
+            responseType: CurrentProgramsResponse.self
+        )
+    }
+
+    func startWatching(channelNumber: String, clientId: String) async throws -> WatchResponse {
+        struct WatchRequest: Codable {
+            let channelNumber: String
+            let clientId: String
+        }
+
+        let request = WatchRequest(channelNumber: channelNumber, clientId: clientId)
+        return try await performRequest(
+            endpoint: "/api/live/watch",
+            method: "POST",
+            body: request,
+            responseType: WatchResponse.self
+        )
+    }
+
+    func sendHeartbeat(clientId: String) async throws -> LiveTVResponse {
+        struct HeartbeatRequest: Codable {
+            let clientId: String
+        }
+
+        let request = HeartbeatRequest(clientId: clientId)
+        return try await performRequest(
+            endpoint: "/api/live/heartbeat",
+            method: "POST",
+            body: request,
+            responseType: LiveTVResponse.self,
+            silentFailure: true  // Don't trigger error alerts - heartbeats are background operations
+        )
+    }
+
+    func stopWatching(clientId: String) async throws -> LiveTVResponse {
+        struct StopRequest: Codable {
+            let clientId: String
+        }
+
+        let request = StopRequest(clientId: clientId)
+        return try await performRequest(
+            endpoint: "/api/live/stop",
+            method: "POST",
+            body: request,
+            responseType: LiveTVResponse.self,
+            silentFailure: true  // Don't trigger error alerts - cleanup operation
+        )
+    }
+
     // MARK: - Generic Request Handler with Exponential Backoff
 
     private func performRequest<T: Decodable>(
@@ -162,7 +223,8 @@ class APIClient: ObservableObject {
         method: String = "GET",
         body: Encodable? = nil,
         responseType: T.Type,
-        retryCount: Int = 0
+        retryCount: Int = 0,
+        silentFailure: Bool = false
     ) async throws -> T {
         guard let url = URL(string: baseURL + endpoint) else {
             throw APIError.invalidURL
@@ -187,6 +249,10 @@ class APIClient: ObservableObject {
             }
 
             guard (200...299).contains(httpResponse.statusCode) else {
+                // Log the error response body
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("❌ Server error \(httpResponse.statusCode) response body: \(responseString)")
+                }
                 throw APIError.serverError(httpResponse.statusCode)
             }
 
@@ -214,7 +280,8 @@ class APIClient: ObservableObject {
                     body: body,
                     responseType: responseType,
                     retryCount: retryCount,
-                    error: error
+                    error: error,
+                    silentFailure: silentFailure
                 )
             }
             throw error
@@ -229,7 +296,8 @@ class APIClient: ObservableObject {
                     body: body,
                     responseType: responseType,
                     retryCount: retryCount,
-                    error: apiError
+                    error: apiError,
+                    silentFailure: silentFailure
                 )
             }
             throw apiError
@@ -242,7 +310,8 @@ class APIClient: ObservableObject {
         body: Encodable?,
         responseType: T.Type,
         retryCount: Int,
-        error: APIError
+        error: APIError,
+        silentFailure: Bool = false
     ) async throws -> T {
         let backoffTime = min(initialBackoff * pow(2.0, Double(retryCount)), maxBackoff)
         let totalWaitTime = (0..<retryCount).reduce(0.0) { total, retry in
@@ -250,7 +319,8 @@ class APIClient: ObservableObject {
         } + backoffTime
 
         // Only show error alert if we've been trying for at least 5 seconds
-        if totalWaitTime >= 5.0 && retryCount == maxRetries - 1 {
+        // Skip if this is a silent failure (like heartbeat)
+        if !silentFailure && totalWaitTime >= 5.0 && retryCount == maxRetries - 1 {
             await MainActor.run {
                 self.error = error
                 self.showErrorAlert = true
@@ -264,7 +334,8 @@ class APIClient: ObservableObject {
             method: method,
             body: body,
             responseType: responseType,
-            retryCount: retryCount + 1
+            retryCount: retryCount + 1,
+            silentFailure: silentFailure
         )
     }
 

@@ -7,6 +7,11 @@
 
 import SwiftUI
 
+enum ContentTab: String, CaseIterable {
+    case recordings = "Recorded"
+    case live = "Live"
+}
+
 struct ShowsListView: View {
     @ObservedObject var apiClient: APIClient
     @EnvironmentObject var userSettings: UserSettings
@@ -15,43 +20,50 @@ struct ShowsListView: View {
     @State private var selectedShow: Show?
     @State private var showServerSettings = false
     @State private var showGuide = false
+    @State private var selectedTab: ContentTab = .recordings
 
     var body: some View {
         ZStack {
-            if isLoading {
-                VStack(spacing: 20) {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    Text("Loading shows...")
-                        .font(.title2)
-                }
-            } else if shows.isEmpty {
-                VStack(spacing: 20) {
-                    Image(systemName: "tv.slash")
-                        .font(.system(size: 60))
-                        .foregroundColor(.gray)
-                    Text("No shows available")
-                        .font(.title2)
-                        .foregroundColor(.gray)
+            if selectedTab == .recordings {
+                // Recordings view
+                if isLoading {
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading shows...")
+                            .font(.title2)
+                    }
+                } else if shows.isEmpty {
+                    VStack(spacing: 20) {
+                        Image(systemName: "tv.slash")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
+                        Text("No shows available")
+                            .font(.title2)
+                            .foregroundColor(.gray)
+                    }
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: [
+                            GridItem(.flexible(), spacing: 12),
+                            GridItem(.flexible(), spacing: 12)
+                        ], spacing: 12) {
+                            ForEach(shows) { show in
+                                Button(action: {
+                                    selectedShow = show
+                                }) {
+                                    ShowCardView(show: show)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 16)
+                    }
                 }
             } else {
-                ScrollView {
-                    LazyVGrid(columns: [
-                        GridItem(.flexible(), spacing: 12),
-                        GridItem(.flexible(), spacing: 12)
-                    ], spacing: 12) {
-                        ForEach(shows) { show in
-                            Button(action: {
-                                selectedShow = show
-                            }) {
-                                ShowCardView(show: show)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 16)
-                }
+                // Live TV view
+                LiveChannelsView(apiClient: apiClient)
             }
         }
         .navigationTitle("TVHomeRun")
@@ -63,6 +75,15 @@ struct ShowsListView: View {
                 }) {
                     Image(systemName: "magnifyingglass")
                 }
+            }
+            ToolbarItem(placement: .principal) {
+                Picker("Content Type", selection: $selectedTab) {
+                    ForEach(ContentTab.allCases, id: \.self) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(minWidth: 220)
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
