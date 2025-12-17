@@ -35,6 +35,18 @@ struct LiveVideoPlayerView: View {
                     playerViewModel.close()
                 }
 
+            // Loading indicator - show while waiting for stream
+            if playerViewModel.isLoading {
+                VStack(spacing: 20) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    Text("Loading stream...")
+                        .font(.system(size: 16))
+                        .foregroundColor(.white)
+                }
+            }
+
             // Error message - EXACTLY like recorded shows
             if let error = playerViewModel.errorMessage {
                 VStack(spacing: 15) {
