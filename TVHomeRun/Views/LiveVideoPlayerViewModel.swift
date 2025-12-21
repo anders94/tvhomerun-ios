@@ -99,7 +99,7 @@ class LiveVideoPlayerViewModel: ObservableObject {
                 }
 
                 // Stream is ready - backend waits for it before responding
-                await setupPlayerWithItem(url: playlistURL)
+                setupPlayerWithItem(url: playlistURL)
             } catch {
                 await MainActor.run {
                     self.errorMessage = "Failed to start stream: \(error.localizedDescription)"
@@ -110,55 +110,52 @@ class LiveVideoPlayerViewModel: ObservableObject {
     }
 
     @MainActor
-    private func setupPlayerWithItem(url: URL) {
-        // Create player item - simplest possible approach
-        let playerItem = AVPlayerItem(url: url)
-        player.replaceCurrentItem(with: playerItem)
+private func setupPlayerWithItem(url: URL) {
+    let playerItem = AVPlayerItem(url: url)
 
-        // Observe player item status - same as recorded shows
-        statusObserver = playerItem.publisher(for: \.status)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] status in
-                guard let self = self else { return }
+    // Configure buffering for live streaming to prevent stalls
+    // Keep at least 10 seconds of buffer to stay safely behind the live edge
+    playerItem.preferredForwardBufferDuration = 10.0
 
-                switch status {
-                case .readyToPlay:
-                    self.isLoading = false
-                    self.player.play()
+    // Let AVPlayer automatically wait when buffer is low to minimize stalling
+    player.automaticallyWaitsToMinimizeStalling = true
 
-                    // Delay heartbeat start to ensure player is stable
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
-                        self.startHeartbeat()
-                    }
-                case .failed:
-                    if let error = playerItem.error {
-                        self.errorMessage = "Failed to load stream: \(error.localizedDescription)"
-                    } else {
-                        self.errorMessage = "Failed to load live stream"
-                    }
-                    self.isLoading = false
-                default:
-                    break
+    player.replaceCurrentItem(with: playerItem)
+
+    // Observe player status to update UI
+    statusObserver = playerItem.publisher(for: \.status)
+        .debounce(for: .seconds(0.1), scheduler: DispatchQueue.main)
+        .sink { [weak self] status in
+            guard let self = self else { return }
+
+            switch status {
+            case .readyToPlay:
+                self.isLoading = false
+                self.player.play()
+                self.startHeartbeat()
+            case .failed:
+                self.isLoading = false
+                if let error = playerItem.error {
+                    self.errorMessage = "Playback failed: \(error.localizedDescription)"
+                } else {
+                    self.errorMessage = "Playback failed"
                 }
+            default:
+                break
             }
-    }
+        }
+}
 
     @MainActor
-    private func startHeartbeat() {
-        // Don't create multiple timers
-        guard heartbeatTimer == nil else {
-            return
-        }
-
-        // Send heartbeat every 25 seconds
-        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 25.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            Task {
-                await self.sendHeartbeat()
-            }
+private func startHeartbeat() {
+    // Send heartbeat every 30 seconds to keep the stream alive
+    heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+        guard let self = self else { return }
+        Task {
+            await self.sendHeartbeat()
         }
     }
+}
 
     private func sendHeartbeat() async {
         do {
